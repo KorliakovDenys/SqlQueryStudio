@@ -1,78 +1,76 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using Prism.Commands;
 
 namespace SqlQueryStudio;
 
 public sealed class ViewModel : INotifyPropertyChanged{
-    private string _queryField;
+    private DataTable? _dataTable;
 
-    private string _responseText;
+    private DelegateCommand<string>? _selectTableCommand;
 
-    private DataTable _dataTable;
+    private DelegateCommand? _refreshDbCommand;
 
-    private DelegateCommand _executeCommand;
+    private DelegateCommand? _refreshTableCommand;
 
-    private DelegateCommand _updateCommand;
+    private DelegateCommand? _updateCommand;
 
     private readonly SqlController _sqlController =
-        new ("Data Source=188.239.119.71,1433;Initial Catalog=Tea;User ID=Server;Password=qwe123;");
+        new("***");
 
-    public string QueryField{
-        get => _queryField;
-        set{
-            _queryField = value;
-            OnPropertyChanged();
-        }
-    }
+    public ObservableCollection<string> TableNames{ get; private set; } = new();
 
-    public string ResponseText{
-        get => _responseText;
-        set{
-            _responseText = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public DataTable DataTable{
+    public DataTable? DataTable{
         get => _dataTable;
-        set{
+        private set{
             _dataTable = value;
             OnPropertyChanged();
         }
     }
 
-    public DelegateCommand ExecuteCommand => _executeCommand ??= new DelegateCommand(ExecuteExecuteCommand);
+    public DelegateCommand<string> SelectTableCommand =>
+        _selectTableCommand ??= new DelegateCommand<string>(ExecuteSelectTableCommandCommand);
+
+    public DelegateCommand RefreshDbCommand => _refreshDbCommand ??= new DelegateCommand(ExecuteRefreshDbCommand);
+
+    public DelegateCommand RefreshTableCommand =>
+        _refreshTableCommand ??= new DelegateCommand(ExecuteRefreshTableCommand);
 
     public DelegateCommand UpdateCommand => _updateCommand ??= new DelegateCommand(ExecuteUpdateCommand);
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    private void ExecuteExecuteCommand(){
-        ClearOutputs();
-        
-        var response = _sqlController.ExecuteCommand(QueryField);
+    private void ExecuteSelectTableCommandCommand(string tableName){
+        DataTable = _sqlController.GetTable(tableName);
+    }
 
-        switch (response){
-            case DataTable dataTable:
-                DataTable = dataTable;
-                break;
-            case string message:
-                ResponseText = message;
-                break;
+    private void ExecuteRefreshDbCommand(){
+        TableNames.Clear();
+
+        var tables = _sqlController.GetTableNames();
+
+        var names = tables.ToList();
+
+        foreach (var name in names){
+            TableNames.Add(name);
         }
     }
 
-    private void ExecuteUpdateCommand(){ }
-
-    private void ClearOutputs(){
-        DataTable = null;
-        ResponseText = string.Empty;
+    private void ExecuteRefreshTableCommand(){
+        if (DataTable == null) return;
+        
+        ExecuteSelectTableCommandCommand(DataTable.TableName);
     }
-    
+
+    private void ExecuteUpdateCommand(){
+        if (DataTable == null) return;
+        
+        _sqlController.UpdateTable(DataTable);
+    }
+
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null){
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }

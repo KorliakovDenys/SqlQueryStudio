@@ -3,44 +3,43 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:SqlQueryStudio"
+        xmlns:b="http://schemas.microsoft.com/xaml/behaviors"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800" DataContext="{Binding ElementName=_viewModel}">
     <Grid Background="#2b2d30">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="160" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition />
-            <RowDefinition Height="Auto" />
-            <RowDefinition />
         </Grid.RowDefinitions>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Margin="4,4,4, 0" Content="&#xE768;" ToolTip="Execute Query" Command="{Binding ExecuteCommand}" />
-            <Button Margin="0,4,4, 0" Content="&#xE752;" ToolTip="Update Info" Command="{Binding UpdateCommand}" />
+
+        <Button HorizontalAlignment="Right" Margin="4,4,4, 0" Content="&#xE72C;" ToolTip="Refresh Database"
+                Command="{Binding RefreshDbCommand}" />
+
+        <ListView Grid.Row="1" Grid.Column="0" Margin="4,0,0,8" ItemsSource="{Binding TableNames}">
+            <b:Interaction.Triggers>
+                <b:EventTrigger EventName="MouseDoubleClick">
+                    <b:InvokeCommandAction Command="{Binding Path=SelectTableCommand}"
+                                           CommandParameter="{Binding SelectedItem, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=ListView}}" />
+                </b:EventTrigger>
+            </b:Interaction.Triggers>
+        </ListView>
+
+        <GridSplitter Grid.Row="1" Grid.Column="1" ShowsPreview="False" Width="3"
+                      HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Transparent" />
+
+        <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button HorizontalAlignment="Right" Margin="4,4,4, 0" Content="&#xE72C;" ToolTip="Refresh Table"
+                    Command="{Binding RefreshTableCommand}" />
+            <Button HorizontalAlignment="Right" Margin="0,4,4, 0" Content="&#xE752;"
+                    ToolTip="Update Info" Command="{Binding UpdateCommand}" />
         </StackPanel>
-        <Grid Grid.Row="1" Background="#1e1f22" Margin="4,4,4,0">
-            <TextBox Background="Transparent" Foreground="#cd8c6e" FontSize="14" BorderBrush="Transparent"
-                     Text="{Binding Path=QueryField}" TextWrapping="Wrap"/>
-        </Grid>
-        <GridSplitter Grid.Row="2" HorizontalAlignment="Stretch" Height="4" Background="Transparent" />
-        <Grid Grid.Row="3" Background="#1e1f22" Margin="4,0,4,8">
-            <TextBlock Foreground="WhiteSmoke" Text="{Binding Path=ResponseText}" />
-            <DataGrid Background="Transparent" BorderBrush="Transparent" ItemsSource="{Binding Path=DataTable}"
-                      Foreground="WhiteSmoke" HorizontalGridLinesBrush="#2b2d30" VerticalGridLinesBrush="#2b2d30">
-                <DataGrid.Resources>
-                    <Style BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"
-                           TargetType="{x:Type DataGridColumnHeader}">
-                        <Setter Property="Background" Value="Transparent" />
-                    </Style>
-                    <Style BasedOn="{StaticResource {x:Type DataGridCell}}"
-                           TargetType="{x:Type DataGridCell}">
-                        <Setter Property="Background" Value="Transparent" />
-                    </Style>
-                    <Style BasedOn="{StaticResource {x:Type DataGridRow}}"
-                           TargetType="{x:Type DataGridRow}">
-                        <Setter Property="Background" Value="Transparent" />
-                    </Style>
-                </DataGrid.Resources>
-            </DataGrid>
-        </Grid>
+
+        <DataGrid ItemsSource="{Binding Path=DataTable}" Grid.Column="2" Grid.Row="1" Background="#1e1f22"
+                  Margin="4,0,4,8" RowHeaderWidth="0"/>
     </Grid>
 </Window>
