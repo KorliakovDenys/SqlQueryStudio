@@ -1,16 +1,17 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Prism.Commands;
 
 namespace SqlQueryStudio;
 
-public sealed class ViewModel : INotifyPropertyChanged{
+public sealed class ViewModel : INotifyPropertyChanged {
     private DataTable? _dataTable;
 
-    private DelegateCommand<string>? _selectTableCommand;
+    private DelegateCommand<Node>? _selectTableCommand;
 
     private DelegateCommand? _refreshDbCommand;
 
@@ -21,18 +22,18 @@ public sealed class ViewModel : INotifyPropertyChanged{
     private readonly SqlController _sqlController =
         new("***");
 
-    public ObservableCollection<string> TableNames{ get; private set; } = new();
+    public ObservableCollection<Node> TableNames { get; private set; } = new();
 
-    public DataTable? DataTable{
+    public DataTable? DataTable {
         get => _dataTable;
-        private set{
+        private set {
             _dataTable = value;
             OnPropertyChanged();
         }
     }
 
-    public DelegateCommand<string> SelectTableCommand =>
-        _selectTableCommand ??= new DelegateCommand<string>(ExecuteSelectTableCommandCommand);
+    public DelegateCommand<Node> SelectTableCommand =>
+        _selectTableCommand ??= new DelegateCommand<Node>(ExecuteSelectTableCommandCommand);
 
     public DelegateCommand RefreshDbCommand => _refreshDbCommand ??= new DelegateCommand(ExecuteRefreshDbCommand);
 
@@ -43,35 +44,36 @@ public sealed class ViewModel : INotifyPropertyChanged{
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    private void ExecuteSelectTableCommandCommand(string tableName){
-        DataTable = _sqlController.GetTable(tableName);
+    private void ExecuteSelectTableCommandCommand(Node node) {
+        Debug.WriteLine("Table name: " + node.Name);
+        DataTable = _sqlController.GetTable(node.Name);
     }
 
-    private void ExecuteRefreshDbCommand(){
+    private void ExecuteRefreshDbCommand() {
         TableNames.Clear();
 
-        var tables = _sqlController.GetTableNames();
+ 
 
-        var names = tables.ToList();
+        //var names = tables.ToList();
 
-        foreach (var name in names){
-            TableNames.Add(name);
-        }
+        //foreach (var name in names) {
+        //    TableNames.Add(new Node { Name = name, Nodes = new ObservableCollection<Node> { new Node { Name = name, Command = SelectTableCommand } } });
+        //}
     }
 
-    private void ExecuteRefreshTableCommand(){
+    private void ExecuteRefreshTableCommand() {
         if (DataTable == null) return;
-        
-        ExecuteSelectTableCommandCommand(DataTable.TableName);
+
+        //!!!ExecuteSelectTableCommandCommand(DataTable.TableName);
     }
 
-    private void ExecuteUpdateCommand(){
+    private void ExecuteUpdateCommand() {
         if (DataTable == null) return;
-        
+
         _sqlController.UpdateTable(DataTable);
     }
 
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null){
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

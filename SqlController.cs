@@ -16,12 +16,12 @@ public class SqlController{
         _connection = new SqlConnection(connectionString);
     }
 
-    public IEnumerable<string> GetTableNames(){
+    public IEnumerable<string> GetTableNames(string dbName){
         var tablesList = new List<string>();
 
         try{
             var adapter =
-                new SqlDataAdapter("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE';",
+                new SqlDataAdapter($"USE {dbName} SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE';",
                     _connection);
 
             var dataTable = new DataTable();
