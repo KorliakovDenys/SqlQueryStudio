@@ -1,14 +1,17 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Windows.Controls;
 using Prism.Commands;
 
 namespace SqlQueryStudio;
 
 public sealed class ViewModel : INotifyPropertyChanged {
+    
     private DataTable? _dataTable;
 
     private DelegateCommand<Node>? _selectTableCommand;
@@ -18,11 +21,15 @@ public sealed class ViewModel : INotifyPropertyChanged {
     private DelegateCommand? _refreshTableCommand;
 
     private DelegateCommand? _updateCommand;
+    
+    private DelegateCommand<TabItem>? _closeTabCommand;
 
     private readonly SqlController _sqlController =
         new("***");
 
-    public ObservableCollection<Node> TableNames { get; private set; } = new();
+    public ObservableCollection<Node> DbTree { get; private set; } = new();
+    
+    public ObservableCollection<TabItem> Tabs { get; private set; } = new();
 
     public DataTable? DataTable {
         get => _dataTable;
@@ -32,33 +39,52 @@ public sealed class ViewModel : INotifyPropertyChanged {
         }
     }
 
-    public DelegateCommand<Node> SelectTableCommand =>
-        _selectTableCommand ??= new DelegateCommand<Node>(ExecuteSelectTableCommandCommand);
+    public DelegateCommand<Node> SelectTableCommand => _selectTableCommand ??= new DelegateCommand<Node>(ExecuteSelectTableCommandCommand);
 
     public DelegateCommand RefreshDbCommand => _refreshDbCommand ??= new DelegateCommand(ExecuteRefreshDbCommand);
 
-    public DelegateCommand RefreshTableCommand =>
-        _refreshTableCommand ??= new DelegateCommand(ExecuteRefreshTableCommand);
+    public DelegateCommand RefreshTableCommand => _refreshTableCommand ??= new DelegateCommand(ExecuteRefreshTableCommand);
 
     public DelegateCommand UpdateCommand => _updateCommand ??= new DelegateCommand(ExecuteUpdateCommand);
+    
+    public DelegateCommand<TabItem> CloseTabCommand => _closeTabCommand ??= new DelegateCommand<TabItem>(ExecuteCloseTabCommand);
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private void ExecuteSelectTableCommandCommand(Node node) {
-        Debug.WriteLine("Table name: " + node.Name);
-        DataTable = _sqlController.GetTable(node.Name);
+        Debug.WriteLine("Data: " + node.Parent.Name + node.Name);
+
+        var dataTable = _sqlController.GetTable(node.Parent.Name, node.Name);
+
+        if (dataTable == null) return;
+        
+        var dataGrid = new DataGrid{
+            ItemsSource = dataTable.DefaultView
+        };
+
+        var tabItem = new TabItem{
+            Header = dataTable.TableName,
+            Content = dataGrid,
+            IsSelected = true
+        };
+        
+        Tabs.Add(tabItem);
     }
 
     private void ExecuteRefreshDbCommand() {
-        TableNames.Clear();
+        DbTree.Clear();
 
- 
+        var databases = _sqlController.GetDatabases();
 
-        //var names = tables.ToList();
+        foreach (var database in databases){
+            var node = new Node{ Name = database, Nodes = new ObservableCollection<Node>()};
+            var tables = _sqlController.GetTableNames(database);
+            foreach (var table in tables){
+                node.Nodes.Add(new Node{Parent = node, Name = table, Command = SelectTableCommand});
+            }
+            DbTree.Add(node);
+        }
 
-        //foreach (var name in names) {
-        //    TableNames.Add(new Node { Name = name, Nodes = new ObservableCollection<Node> { new Node { Name = name, Command = SelectTableCommand } } });
-        //}
     }
 
     private void ExecuteRefreshTableCommand() {
@@ -71,6 +97,15 @@ public sealed class ViewModel : INotifyPropertyChanged {
         if (DataTable == null) return;
 
         _sqlController.UpdateTable(DataTable);
+    }
+
+    private void ExecuteCloseTabCommand(TabItem tabItem){
+        try{
+            Tabs.Remove(tabItem);
+        }
+        catch (Exception exception){
+            Debug.WriteLine(exception.Message);
+        }
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) {

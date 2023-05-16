@@ -16,12 +16,36 @@ public class SqlController{
         _connection = new SqlConnection(connectionString);
     }
 
+    public IEnumerable<string> GetDatabases(){
+        var dataBasesList = new List<string>();
+
+        try{
+            _connection.Open();
+            var command = new SqlCommand("SELECT name FROM sys.databases", _connection);
+            var reader = command.ExecuteReader();
+
+            while (reader.Read()){
+                var databaseName = reader["name"].ToString();
+                
+                if (databaseName != null) dataBasesList.Add(databaseName);
+            }
+
+            reader.Close();
+        }
+        catch (Exception ex){
+            Debug.WriteLine(ex.Message);
+        }
+
+        return dataBasesList;
+    }
+
     public IEnumerable<string> GetTableNames(string dbName){
         var tablesList = new List<string>();
 
         try{
             var adapter =
-                new SqlDataAdapter($"USE {dbName} SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE';",
+                new SqlDataAdapter(
+                    $"USE {dbName} SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE';",
                     _connection);
 
             var dataTable = new DataTable();
@@ -37,11 +61,11 @@ public class SqlController{
         return tablesList;
     }
 
-    public DataTable? GetTable(string tableName){
+    public DataTable? GetTable(string dbName, string tableName){
         DataTable? dataTable = null;
 
         try{
-            _adapter = new SqlDataAdapter($"SELECT * FROM {tableName}", _connection);
+            _adapter = new SqlDataAdapter($"USE {dbName} SELECT * FROM {tableName}", _connection);
 
             dataTable = new DataTable(tableName);
 
@@ -53,13 +77,13 @@ public class SqlController{
 
         return dataTable;
     }
-    
+
     public void UpdateTable(DataTable dataTable){
         try{
-            if(_adapter == null) return;
+            if (_adapter == null) return;
 
             _ = new SqlCommandBuilder(_adapter);
-            
+
             _adapter.Update(dataTable);
         }
         catch (Exception e){
