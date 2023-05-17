@@ -5,11 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:b="http://schemas.microsoft.com/xaml/behaviors"
         mc:Ignorable="d"
-        Title="MainWindow" Height="720" Width="1280" DataContext="{Binding ElementName=_viewModel}">
-    <Grid Background="#2b2d30">
+        Title="MainWindow" Height="720" Width="1280" DataContext="{Binding ElementName=_windowView}" Background="#2b2d30">
+    <Grid Margin="4 4 4 8">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="100" />
-            <ColumnDefinition Width="80"/>
+            <ColumnDefinition Width="180"/>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
@@ -18,10 +17,20 @@
             <RowDefinition />
         </Grid.RowDefinitions>
  
-        <Button HorizontalAlignment="Right" Margin="0,4,4,0" Content="&#xE72C;" ToolTip="Refresh Database"
-                Command="{Binding RefreshDbCommand}" Grid.Column="1" />
+        <Grid HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Button HorizontalAlignment="Right" Margin="0,4,4,4" Content="&#xE72C;" ToolTip="Refresh Database"
+                    Command="{Binding RefreshDbCommand}" Grid.Column="1" />
+            <Button HorizontalAlignment="Right" Margin="0,4,4,4" Content="&#xE710;" ToolTip="New QueryConsole"
+                    Command="{Binding OpenConsoleCommand}" Grid.Column="2" />
+        </Grid>
+        
 
-        <TreeView Grid.Row="1" Grid.Column="0"  Margin="4,0,0,8" ItemsSource="{Binding DbTree}" Grid.ColumnSpan="2">
+        <TreeView Grid.Row="1" Grid.Column="0" ItemsSource="{Binding DbTree}">
             <TreeView.ItemTemplate>
                 <HierarchicalDataTemplate ItemsSource="{Binding Path=Nodes}">
                     <TextBlock Text="{Binding Name}">
@@ -33,24 +42,9 @@
             </TreeView.ItemTemplate>
         </TreeView>
 
-        <GridSplitter Grid.Row="1" Grid.Column="2" ShowsPreview="False" Width="3"
+        <GridSplitter Grid.Row="1" Grid.Column="1" BorderThickness="0" ShowsPreview="False" Width="4"
                       HorizontalAlignment="Center" Background="Transparent" />
-
-        <Grid Grid.Row="0" Grid.Column="3" Margin="6,0,6,0">
-            <Button HorizontalAlignment="Left" Margin="0,4,4, 0" Content="&#xE768;"
-                    ToolTip="Update Info" Command="{Binding UpdateCommand}" />
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button HorizontalAlignment="Right" Margin="4,4,4, 0" Content="&#xE72C;" ToolTip="Refresh Table"
-                        Command="{Binding RefreshTableCommand}" />
-                <Button HorizontalAlignment="Right" Margin="0,4,4, 0" Content="&#xE752;"
-                        ToolTip="Update Info" Command="{Binding UpdateCommand}" />
-            </StackPanel>
-        </Grid>
  
-        <TabControl Grid.Column="3" Grid.Row="1" Margin="0,0,0,8" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}">
-        </TabControl>
-
-
-
+        <TabControl Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" BorderThickness="0" ItemsSource="{Binding Tabs}"/>
     </Grid>
 </Window>

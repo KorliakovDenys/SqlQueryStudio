@@ -4,6 +4,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SqlQueryStudio;
 
@@ -26,7 +27,7 @@ public class SqlController{
 
             while (reader.Read()){
                 var databaseName = reader["name"].ToString();
-                
+
                 if (databaseName != null) dataBasesList.Add(databaseName);
             }
 
@@ -34,6 +35,9 @@ public class SqlController{
         }
         catch (Exception ex){
             Debug.WriteLine(ex.Message);
+        }
+        finally{
+            _connection.Close();
         }
 
         return dataBasesList;
@@ -65,11 +69,11 @@ public class SqlController{
         DataTable? dataTable = null;
 
         try{
-            _adapter = new SqlDataAdapter($"USE {dbName} SELECT * FROM {tableName}", _connection);
+            var adapter = new SqlDataAdapter($"USE {dbName} SELECT * FROM {tableName}", _connection);
 
             dataTable = new DataTable(tableName);
 
-            _adapter.Fill(dataTable);
+            adapter.Fill(dataTable);
         }
         catch (Exception e){
             Debug.WriteLine(e.Message);
@@ -78,16 +82,59 @@ public class SqlController{
         return dataTable;
     }
 
-    public void UpdateTable(DataTable dataTable){
+    public void UpdateTable(DataTable? dataTable){
         try{
-            if (_adapter == null) return;
+            var adapter = new SqlDataAdapter();
+            
+            _ = new SqlCommandBuilder(adapter);
 
-            _ = new SqlCommandBuilder(_adapter);
-
-            _adapter.Update(dataTable);
+            adapter.Update(dataTable);
         }
         catch (Exception e){
             Debug.WriteLine(e.Message);
         }
+    }
+
+    public async Task<QueryResponse> Fetch(string sqlCommand){
+        var dataTable = new DataTable();
+        MessageHandlerArgs? message = null;
+        try{
+            await _connection.OpenAsync();
+
+            var command = new SqlCommand(sqlCommand, _connection);
+            var reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
+
+
+            var recAff = reader.RecordsAffected;
+
+            if (!reader.HasRows){
+                dataTable = null;
+                message = new MessageHandlerArgs($"Records affected: {recAff}", MessageHandlerArgs.Type.Information);
+                throw new Exception();
+            }
+
+            for (var i = 0; i < reader.FieldCount; i++){
+                dataTable?.Columns.Add(reader.GetName(i));
+            }
+
+            while (reader.Read()){
+                var row = dataTable?.NewRow();
+
+                for (var i = 0; i < reader.FieldCount; i++){
+                    row![i] = reader.GetValue(i);
+                }
+
+                dataTable?.Rows.Add(row!);
+            }
+        }
+        catch (SqlException exception){
+            message = new MessageHandlerArgs($"{exception.Message}", MessageHandlerArgs.Type.Error);
+        }
+        catch (Exception){ }
+        finally{
+            await _connection.CloseAsync();
+        }
+
+        return new QueryResponse{ DataTable = dataTable, MessageHandlerArgs = message };
     }
 }
