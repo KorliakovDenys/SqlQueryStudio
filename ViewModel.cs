@@ -3,10 +3,10 @@ using System.Runtime.CompilerServices;
 
 namespace SqlQueryStudio;
 
-public abstract class ViewModel : INotifyPropertyChanged {
+public abstract class ViewModel : INotifyPropertyChanged{
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) {
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null){
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

@@ -1,9 +1,11 @@
 ﻿using System.Data;
+using System.Data.SqlClient;
 using Prism.Commands;
 
 namespace SqlQueryStudio;
 
 public class TableView : ViewModel{
+    
     private DataTable? _dataTable;
 
     public DataTable? DataTable{
@@ -14,6 +16,8 @@ public class TableView : ViewModel{
         }
     }
 
+    public SqlDataAdapter? SqlDataAdapter{ get; set; }
+    
     public Node Node{ get; set; }
 
     public DelegateCommand<TableView>? Refresh{ get; set; }

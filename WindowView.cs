@@ -1,20 +1,17 @@
 ﻿using System;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Data;
+using System.Data.SqlClient;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using Prism.Commands;
 
 namespace SqlQueryStudio;
 
 public sealed class WindowView : ViewModel{
     private DelegateCommand<Node>? _selectTableCommand;
-    
-    private DelegateCommand _sopenConsoleCommand;
+
+    private DelegateCommand _openConsoleCommand;
 
     private DelegateCommand? _refreshDbCommand;
 
@@ -27,17 +24,16 @@ public sealed class WindowView : ViewModel{
     private DelegateCommand<ConsoleView>? _executeQueryCommand;
 
     private readonly SqlController _sqlController =
-        new("Data Source=188.239.119.71,1433;User ID=Server;Password=qwe123;");
-
+        new(new SqlConnectionData("188.239.119.71,1433","Server", "qwe123"));
     public ObservableCollection<Node> DbTree{ get; private set; } = new();
 
     public ObservableCollection<TabItem> Tabs{ get; private set; } = new();
 
     public DelegateCommand<Node> SelectTableCommand =>
         _selectTableCommand ??= new DelegateCommand<Node>(ExecuteOpenTableCommand);
-    
+
     public DelegateCommand OpenConsoleCommand =>
-        _sopenConsoleCommand ??= new DelegateCommand(ExecuteOpenConsoleCommand);
+        _openConsoleCommand ??= new DelegateCommand(ExecuteOpenConsoleCommand);
 
     public DelegateCommand RefreshDbCommand => _refreshDbCommand ??= new DelegateCommand(ExecuteRefreshDbCommand);
 
@@ -60,7 +56,7 @@ public sealed class WindowView : ViewModel{
 
             var tabItem = new TabItem{
                 Header = "Console",
-                Content = new TabItemDataWrapper{ Data = new ConsoleView{Command = ExecuteQueryCommand} },
+                Content = new TabItemDataWrapper{ Data = new ConsoleView{ Command = ExecuteQueryCommand } },
                 IsSelected = true,
                 Style = tabItemStyle
             };
@@ -71,10 +67,12 @@ public sealed class WindowView : ViewModel{
             Debug.WriteLine(e);
         }
     }
-    
+
     private void ExecuteOpenTableCommand(Node node){
         try{
-            var dataTable = _sqlController.GetTable(node.Parent.Name, node.Name);
+            SqlDataAdapter? sqlDataAdapter = null;
+
+            var dataTable = _sqlController.GetTable(node.Parent.Name, node.Name, ref sqlDataAdapter);
 
             if (dataTable == null) return;
 
@@ -82,7 +80,15 @@ public sealed class WindowView : ViewModel{
 
             var tabItem = new TabItem{
                 Header = dataTable.TableName,
-                Content = new TabItemDataWrapper{ Data = new TableView{Node = node, DataTable = dataTable, Refresh = RefreshTableCommand, Update = UpdateCommand} },
+                Content = new TabItemDataWrapper{
+                    Data = new TableView{
+                        Node = node,
+                        DataTable = dataTable,
+                        Refresh = RefreshTableCommand,
+                        Update = UpdateCommand,
+                        SqlDataAdapter = sqlDataAdapter
+                    }
+                },
                 IsSelected = true,
                 Style = tabItemStyle
             };
@@ -104,7 +110,11 @@ public sealed class WindowView : ViewModel{
                 var node = new Node{ Name = database, Nodes = new ObservableCollection<Node>() };
                 var tables = _sqlController.GetTableNames(database);
                 foreach (var table in tables){
-                    node.Nodes.Add(new Node{ Parent = node, Name = table, Command = SelectTableCommand });
+                    node.Nodes.Add(new Node{
+                        Parent = node, 
+                        Name = table, 
+                        Command = SelectTableCommand
+                    });
                 }
 
                 DbTree.Add(node);
@@ -117,16 +127,22 @@ public sealed class WindowView : ViewModel{
 
     private void ExecuteRefreshTableCommand(TableView tableView){
         try{
-            tableView.DataTable = _sqlController.GetTable(tableView.Node.Parent.Name, tableView.Node.Name);
+            var dbName = tableView.Node.Parent.Name; 
+            var tableName = tableView.Node.Name;
+            var tableViewSqlDataAdapter = tableView.SqlDataAdapter;
+            tableView.DataTable = _sqlController.GetTable(dbName, tableName, ref tableViewSqlDataAdapter);
         }
         catch (Exception e){
             Console.WriteLine(e);
         }
     }
 
-    private void ExecuteUpdateCommand(TableView dataTable){
-        try{
-            _sqlController.UpdateTable(dataTable.DataTable);
+    private void ExecuteUpdateCommand(TableView tableView){
+        try{ 
+            if (tableView.SqlDataAdapter == null) throw new NullReferenceException();
+            if (tableView.DataTable == null) throw new NullReferenceException();
+
+            _sqlController.UpdateTable(tableView.DataTable, tableView.SqlDataAdapter);
         }
         catch (Exception e){
             Console.WriteLine(e);

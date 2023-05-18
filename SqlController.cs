@@ -9,35 +9,32 @@ using System.Threading.Tasks;
 namespace SqlQueryStudio;
 
 public class SqlController{
-    private readonly SqlConnection _connection;
+    private readonly SqlConnectionData _connectionData;
 
-    private SqlDataAdapter? _adapter;
-
-    public SqlController(string connectionString){
-        _connection = new SqlConnection(connectionString);
+    public SqlController(SqlConnectionData connectionData){
+        _connectionData = connectionData;
     }
 
     public IEnumerable<string> GetDatabases(){
         var dataBasesList = new List<string>();
-
+        
         try{
-            _connection.Open();
-            var command = new SqlCommand("SELECT name FROM sys.databases", _connection);
-            var reader = command.ExecuteReader();
+            using var connection = new SqlConnection(_connectionData.Get());
+
+            var command = new SqlCommand("SELECT name FROM sys.databases", connection);
+            
+            connection.Open();
+            
+            using var reader = command.ExecuteReader();
 
             while (reader.Read()){
                 var databaseName = reader["name"].ToString();
 
                 if (databaseName != null) dataBasesList.Add(databaseName);
             }
-
-            reader.Close();
         }
-        catch (Exception ex){
-            Debug.WriteLine(ex.Message);
-        }
-        finally{
-            _connection.Close();
+        catch (Exception exception){
+            Debug.WriteLine(exception.Message);
         }
 
         return dataBasesList;
@@ -49,9 +46,9 @@ public class SqlController{
         try{
             var adapter =
                 new SqlDataAdapter(
-                    $"USE {dbName} SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE';",
-                    _connection);
-
+                    $"SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE';",
+                    _connectionData.Get(dbName));
+            
             var dataTable = new DataTable();
 
             adapter.Fill(dataTable);
@@ -65,15 +62,15 @@ public class SqlController{
         return tablesList;
     }
 
-    public DataTable? GetTable(string dbName, string tableName){
+    public DataTable? GetTable(string dbName, string tableName, ref SqlDataAdapter? sqlDataAdapter){
         DataTable? dataTable = null;
 
         try{
-            var adapter = new SqlDataAdapter($"USE {dbName} SELECT * FROM {tableName}", _connection);
+            sqlDataAdapter ??= new SqlDataAdapter($"SELECT * FROM {tableName}", _connectionData.Get(dbName));
 
             dataTable = new DataTable(tableName);
 
-            adapter.Fill(dataTable);
+            sqlDataAdapter.Fill(dataTable);
         }
         catch (Exception e){
             Debug.WriteLine(e.Message);
@@ -82,26 +79,31 @@ public class SqlController{
         return dataTable;
     }
 
-    public void UpdateTable(DataTable? dataTable){
+    public void UpdateTable(DataTable dataTable, SqlDataAdapter sqlDataAdapter){
         try{
-            var adapter = new SqlDataAdapter();
-            
-            _ = new SqlCommandBuilder(adapter);
+            if (dataTable == null) throw new NullReferenceException("dataTable can not be null");
+            if (sqlDataAdapter == null) throw new NullReferenceException("dataTable can not be null");
+                
+            var commandBuilder = new SqlCommandBuilder(sqlDataAdapter);
 
-            adapter.Update(dataTable);
+            sqlDataAdapter.UpdateCommand = commandBuilder.GetUpdateCommand();
+            
+            sqlDataAdapter.Update(dataTable);
         }
         catch (Exception e){
             Debug.WriteLine(e.Message);
         }
     }
 
-    public async Task<QueryResponse> Fetch(string sqlCommand){
+    public async Task<QueryResponseView> Fetch(string sqlCommand){
         var dataTable = new DataTable();
         MessageHandlerArgs? message = null;
         try{
-            await _connection.OpenAsync();
+            await using var connection = new SqlConnection(_connectionData.Get());
+            
+            await connection.OpenAsync();
 
-            var command = new SqlCommand(sqlCommand, _connection);
+            var command = new SqlCommand(sqlCommand, connection);
             var reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
 
 
@@ -130,11 +132,10 @@ public class SqlController{
         catch (SqlException exception){
             message = new MessageHandlerArgs($"{exception.Message}", MessageHandlerArgs.Type.Error);
         }
-        catch (Exception){ }
-        finally{
-            await _connection.CloseAsync();
+        catch (Exception exception){
+            Debug.WriteLine(exception.Message);
         }
 
-        return new QueryResponse{ DataTable = dataTable, MessageHandlerArgs = message };
+        return new QueryResponseView{ DataTable = dataTable, MessageHandlerArgs = message };
     }
 }

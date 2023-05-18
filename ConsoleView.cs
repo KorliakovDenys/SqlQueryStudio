@@ -5,7 +5,7 @@ namespace SqlQueryStudio;
 public class ConsoleView : ViewModel{
     private string _queryInput;
 
-    private QueryResponse? _queryResponse;
+    private QueryResponseView? _queryResponse;
 
     private DelegateCommand<ConsoleView>? _command;
 
@@ -17,7 +17,7 @@ public class ConsoleView : ViewModel{
         }
     }
 
-    public QueryResponse? QueryResponse{
+    public QueryResponseView? QueryResponse{
         get => _queryResponse;
         set{
             _queryResponse = value;
