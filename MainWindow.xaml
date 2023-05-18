@@ -20,10 +20,13 @@
 
         <Grid HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
+            <Button HorizontalAlignment="Right" Margin="0,4,4,4" Content="&#xE77B;" ToolTip="Refresh Database"
+                    Command="{Binding SetServerCommand}" Grid.Column="0" />
             <Button HorizontalAlignment="Right" Margin="0,4,4,4" Content="&#xE72C;" ToolTip="Refresh Database"
                     Command="{Binding RefreshDbCommand}" Grid.Column="1" />
             <Button HorizontalAlignment="Right" Margin="0,4,4,4" Content="&#xE710;" ToolTip="New QueryConsole"

@@ -23,8 +23,11 @@ public sealed class WindowView : ViewModel{
 
     private DelegateCommand<ConsoleView>? _executeQueryCommand;
 
-    private readonly SqlController _sqlController =
-        new(new SqlConnectionData("188.239.119.71,1433","Server", "qwe123"));
+    private DelegateCommand _setServerCommand;
+
+    private SqlController? _sqlController;
+
+    private AuthorizationWindowView _authorizationWindowView;
     public ObservableCollection<Node> DbTree{ get; private set; } = new();
 
     public ObservableCollection<TabItem> Tabs{ get; private set; } = new();
@@ -49,6 +52,8 @@ public sealed class WindowView : ViewModel{
     public DelegateCommand<ConsoleView> ExecuteQueryCommand =>
         _executeQueryCommand ??= new DelegateCommand<ConsoleView>(ExecuteExecuteQueryCommand);
 
+    public DelegateCommand SetServerCommand =>
+        _setServerCommand ??= new DelegateCommand(ExecuteSetServerCommand);
 
     private void ExecuteOpenConsoleCommand(){
         try{
@@ -72,7 +77,7 @@ public sealed class WindowView : ViewModel{
         try{
             SqlDataAdapter? sqlDataAdapter = null;
 
-            var dataTable = _sqlController.GetTable(node.Parent.Name, node.Name, ref sqlDataAdapter);
+            var dataTable = _sqlController?.GetTable(node.Parent.Name, node.Name, ref sqlDataAdapter);
 
             if (dataTable == null) return;
 
@@ -104,15 +109,15 @@ public sealed class WindowView : ViewModel{
         try{
             DbTree.Clear();
 
-            var databases = _sqlController.GetDatabases();
+            var databases = _sqlController?.GetDatabases();
 
-            foreach (var database in databases){
+            foreach (var database in databases!){
                 var node = new Node{ Name = database, Nodes = new ObservableCollection<Node>() };
-                var tables = _sqlController.GetTableNames(database);
-                foreach (var table in tables){
+                var tables = _sqlController?.GetTableNames(database);
+                foreach (var table in tables!){
                     node.Nodes.Add(new Node{
-                        Parent = node, 
-                        Name = table, 
+                        Parent = node,
+                        Name = table,
                         Command = SelectTableCommand
                     });
                 }
@@ -127,10 +132,10 @@ public sealed class WindowView : ViewModel{
 
     private void ExecuteRefreshTableCommand(TableView tableView){
         try{
-            var dbName = tableView.Node.Parent.Name; 
+            var dbName = tableView.Node.Parent.Name;
             var tableName = tableView.Node.Name;
             var tableViewSqlDataAdapter = tableView.SqlDataAdapter;
-            tableView.DataTable = _sqlController.GetTable(dbName, tableName, ref tableViewSqlDataAdapter);
+            tableView.DataTable = _sqlController?.GetTable(dbName, tableName, ref tableViewSqlDataAdapter);
         }
         catch (Exception e){
             Console.WriteLine(e);
@@ -138,11 +143,11 @@ public sealed class WindowView : ViewModel{
     }
 
     private void ExecuteUpdateCommand(TableView tableView){
-        try{ 
+        try{
             if (tableView.SqlDataAdapter == null) throw new NullReferenceException();
             if (tableView.DataTable == null) throw new NullReferenceException();
 
-            _sqlController.UpdateTable(tableView.DataTable, tableView.SqlDataAdapter);
+            _sqlController?.UpdateTable(tableView.DataTable, tableView.SqlDataAdapter);
         }
         catch (Exception e){
             Console.WriteLine(e);
@@ -160,12 +165,31 @@ public sealed class WindowView : ViewModel{
 
     private void ExecuteExecuteQueryCommand(ConsoleView consoleView){
         try{
-            var response = _sqlController.Fetch(consoleView.QueryInput).Result;
+            var response = _sqlController?.Fetch(consoleView.QueryInput).Result;
 
             consoleView.QueryResponse = response;
         }
         catch (Exception exception){
             Debug.WriteLine(exception.Message);
         }
+    }
+
+    private void ExecuteSetServerCommand(){
+        _authorizationWindowView = new AuthorizationWindowView();
+
+        var authorizationWindow = new AuthorizationWindow(_authorizationWindowView);
+
+        var result = authorizationWindow.ShowDialog();
+        
+        if(!result!.Value) return;
+
+        if (!SqlController.TestConnection(_authorizationWindowView.GetConnectionData())){
+            MessageBox.Show("Invalid connection data.");
+            return;
+        }
+        
+        _sqlController = new SqlController(_authorizationWindowView.GetConnectionData());
+
+        RefreshDbCommand.Execute();
     }
 }

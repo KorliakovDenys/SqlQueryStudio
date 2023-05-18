@@ -11,20 +11,32 @@ namespace SqlQueryStudio;
 public class SqlController{
     private readonly SqlConnectionData _connectionData;
 
+    public static bool TestConnection(SqlConnectionData connectionData){
+        try{
+            using var connection = new SqlConnection(connectionData.Get());
+
+            connection.Open();
+        }
+        catch (Exception){
+            return false;
+        }
+        return true;
+    }
+
     public SqlController(SqlConnectionData connectionData){
         _connectionData = connectionData;
     }
 
     public IEnumerable<string> GetDatabases(){
         var dataBasesList = new List<string>();
-        
+
         try{
             using var connection = new SqlConnection(_connectionData.Get());
 
             var command = new SqlCommand("SELECT name FROM sys.databases", connection);
-            
+
             connection.Open();
-            
+
             using var reader = command.ExecuteReader();
 
             while (reader.Read()){
@@ -48,7 +60,7 @@ public class SqlController{
                 new SqlDataAdapter(
                     $"SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE';",
                     _connectionData.Get(dbName));
-            
+
             var dataTable = new DataTable();
 
             adapter.Fill(dataTable);
@@ -83,11 +95,11 @@ public class SqlController{
         try{
             if (dataTable == null) throw new NullReferenceException("dataTable can not be null");
             if (sqlDataAdapter == null) throw new NullReferenceException("dataTable can not be null");
-                
+
             var commandBuilder = new SqlCommandBuilder(sqlDataAdapter);
 
             sqlDataAdapter.UpdateCommand = commandBuilder.GetUpdateCommand();
-            
+
             sqlDataAdapter.Update(dataTable);
         }
         catch (Exception e){
@@ -100,7 +112,7 @@ public class SqlController{
         MessageHandlerArgs? message = null;
         try{
             await using var connection = new SqlConnection(_connectionData.Get());
-            
+
             await connection.OpenAsync();
 
             var command = new SqlCommand(sqlCommand, connection);

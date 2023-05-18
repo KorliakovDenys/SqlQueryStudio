@@ -33,6 +33,7 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        
         <Style TargetType="{x:Type DataGrid}">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
